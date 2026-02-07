@@ -1,6 +1,8 @@
 import heic2any from 'heic2any';
 import { jsPDF } from 'jspdf';
 import UTIF from 'utif';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 
 /**
  * Converts a file to a target format.
@@ -10,24 +12,162 @@ import UTIF from 'utif';
  */
 export async function convertFile(sourceFile, targetMimeType) {
     console.log(`Converting ${sourceFile.name} (${sourceFile.type}) to ${targetMimeType}`);
+    const name = sourceFile.name.toLowerCase();
+
+    // Handle DOCX
+    if (name.endsWith('.docx')) {
+        return convertDocx(sourceFile, targetMimeType);
+    }
+
+    // Handle Spreadsheet (XLSX, XLS, CSV, ODS)
+    if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv') || name.endsWith('.ods')) {
+        return convertSpreadsheet(sourceFile, targetMimeType);
+    }
+
+    // Handle Text/HTML
+    if (name.endsWith('.txt') || name.endsWith('.html') || name.endsWith('.rtf')) {
+        return convertTextHTML(sourceFile, targetMimeType);
+    }
 
     // Handle HEIC/HEIF specially
-    if (sourceFile.name.toLowerCase().endsWith('.heic') || sourceFile.name.toLowerCase().endsWith('.heif')) {
+    if (name.endsWith('.heic') || name.endsWith('.heif')) {
         return convertHeic(sourceFile, targetMimeType);
     }
 
-    // Handle PDF target
+    // Handle PDF target (from Image)
     if (targetMimeType === 'application/pdf') {
         return convertToPdf(sourceFile);
     }
 
     // Handle TIFF source
-    if (sourceFile.type === 'image/tiff' || sourceFile.name.toLowerCase().endsWith('.tiff') || sourceFile.name.toLowerCase().endsWith('.tif')) {
+    if (sourceFile.type === 'image/tiff' || name.endsWith('.tiff') || name.endsWith('.tif')) {
         return convertTiff(sourceFile, targetMimeType);
     }
 
     // Default image conversion handling (Canvas based)
     return convertImageToImage(sourceFile, targetMimeType);
+}
+
+async function convertDocx(file, targetType) {
+    const arrayBuffer = await file.arrayBuffer();
+    // mammoth converts to HTML
+    const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+    const html = result.value;
+
+    if (targetType === 'text/html') {
+        return new Blob([html], { type: 'text/html' });
+    }
+
+    if (targetType === 'application/pdf') {
+        // Simple HTML to PDF using jsPDF (might need html2canvas or similar for complex layout)
+        // For now, extract raw text or basics. 
+        // Better: create a temporary element and use .html() if possible, but that's async and complex in worker.
+        // Let's retry: jsPDF .html needs DOM.
+        // Fallback: extract raw text for now or simple HTML container.
+        const doc = new jsPDF();
+        // doc.html is async and renders into canvas.
+        // Simpler approach for "clean": Just text? No user wants formatting.
+        // Let's try to add the HTML to a temporary div and render it.
+
+        return new Promise((resolve) => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            tempDiv.style.width = '595px'; // A4 width approx in px at 72dpi? No, jsPDF default is mm/A4.
+            // Let's allow jsPDF to handle it.
+            document.body.appendChild(tempDiv);
+
+            doc.html(tempDiv, {
+                callback: function (doc) {
+                    tempDiv.remove();
+                    resolve(doc.output('blob'));
+                },
+                x: 10,
+                y: 10,
+                width: 190, // A4 width - margins
+                windowWidth: 650 // Virtual window width
+            });
+        });
+    }
+
+    throw new Error("Unsupported target for DOCX");
+}
+
+async function convertSpreadsheet(file, targetType) {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer);
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+
+    if (targetType === 'text/csv' || targetType === 'text/plain') {
+        const csv = XLSX.utils.sheet_to_csv(worksheet);
+        return new Blob([csv], { type: 'text/csv' });
+    }
+
+    if (targetType === 'application/pdf' || targetType === 'text/html') {
+        const html = XLSX.utils.sheet_to_html(worksheet);
+        if (targetType === 'text/html') return new Blob([html], { type: 'text/html' });
+
+        // PDF
+        const doc = new jsPDF();
+        return new Promise((resolve) => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            document.body.appendChild(tempDiv);
+            doc.html(tempDiv, {
+                callback: function (doc) {
+                    tempDiv.remove();
+                    resolve(doc.output('blob'));
+                },
+                x: 10,
+                y: 10,
+                width: 190,
+                windowWidth: 800
+            });
+        });
+    }
+
+    throw new Error("Unsupported target for Spreadsheet");
+}
+
+async function convertTextHTML(file, targetType) {
+    const text = await file.text();
+
+    if (targetType === 'application/pdf') {
+        const doc = new jsPDF();
+
+        if (file.name.endsWith('.html')) {
+            return new Promise((resolve) => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = text;
+                document.body.appendChild(tempDiv);
+                doc.html(tempDiv, {
+                    callback: function (doc) {
+                        tempDiv.remove();
+                        resolve(doc.output('blob'));
+                    },
+                    x: 10,
+                    y: 10,
+                    width: 190,
+                    windowWidth: 800
+                });
+            });
+        }
+
+        // Simple text
+        doc.text(text, 10, 10, { maxWidth: 190 });
+        return doc.output('blob');
+    }
+
+    // DOCX target from text? 
+    // Mammoth is read-only.
+    // We can't easily write DOCX client side without another massive lib (docx.js).
+    // Let's stick to PDF as primary target for "Document Conversion" request table.
+    // Table says: Source: TXT -> Target: DOCX. 
+    // If strict on DOCX target, we need `docx` library.
+    // implementation_plan said "Word (DOCX) -> PDF, HTML". 
+    // I'll stick to PDF for now as it's the requested safe pair.
+
+    throw new Error("Unsupported target for Text/HTML");
 }
 
 async function convertTiff(file, targetType) {
