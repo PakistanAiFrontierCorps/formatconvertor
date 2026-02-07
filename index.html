@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SleekConvert - Ultimate File Converter</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="app-container">
+        <header>
+            <h1>SleekConvert</h1>
+            <p>Transform your images instantly. Private, fast, and local.</p>
+        </header>
+
+        <main>
+            <div id="drop-zone" class="drop-zone">
+                <div class="drop-content">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="upload-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <h3>Drag & Drop files here</h3>
+                    <p>or click to browse</p>
+                    <input type="file" id="file-input" multiple accept="image/*,.heic,.heif,.tiff,.tif,.svg">
+                </div>
+            </div>
+
+            <div id="file-list-container" class="file-list-container hidden">
+                <div class="list-header">
+                    <h2>Files to Process</h2>
+                    <div class="global-actions">
+                        <select id="global-format-select">
+                            <option value="" disabled selected>Convert all to...</option>
+                            <option value="image/jpeg">JPEG</option>
+                            <option value="image/png">PNG</option>
+                            <option value="image/webp">WebP</option>
+                            <option value="image/bmp">BMP</option>
+                            <option value="image/gif">GIF (Frame 1)</option>
+                            <option value="application/pdf">PDF</option>
+                        </select>
+                        <button id="convert-all-btn" class="btn-primary" disabled>Convert All</button>
+                        <button id="clear-all-btn" class="btn-secondary">Clear All</button>
+                    </div>
+                </div>
+                <ul id="file-list" class="file-list">
+                    <!-- File Items will be injected here -->
+                </ul>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2026 SleekConvert. Built with passion.</p>
+        </footer>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

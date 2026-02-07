@@ -1,0 +1,461 @@
+:root {
+    --bg-color: #0f172a;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-color: #3b82f6;
+    --accent-hover: #2563eb;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --success-color: #10b981;
+    --error-color: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Background Blobs */
+.background-blobs {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.blob {
+    position: absolute;
+    filter: blur(80px);
+    opacity: 0.6;
+    animation: float 20s infinite ease-in-out;
+}
+
+.blob-1 {
+    width: 400px;
+    height: 400px;
+    background: #4f46e5;
+    top: -100px;
+    left: -100px;
+}
+
+.blob-2 {
+    width: 300px;
+    height: 300px;
+    background: #ec4899;
+    bottom: -50px;
+    right: -50px;
+    animation-delay: -5s;
+}
+
+.blob-3 {
+    width: 250px;
+    height: 250px;
+    background: #06b6d4;
+    bottom: 20%;
+    left: 20%;
+    animation-delay: -10s;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(30px, -30px);
+    }
+}
+
+/* App Container */
+.app-container {
+    width: 90%;
+    max-width: 900px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: var(--glass-shadow);
+    margin: 2rem 0;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #60a5fa, #c084fc);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    color: var(--text-secondary);
+}
+
+/* Drop Zone */
+.drop-zone {
+    border: 2px dashed var(--glass-border);
+    border-radius: 12px;
+    padding: 3rem 1rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+    border-color: var(--accent-color);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.drop-content svg {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.drop-content h3 {
+    margin-bottom: 0.5rem;
+}
+
+.drop-content p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+#file-input {
+    display: none;
+}
+
+/* File List */
+.file-list-container {
+    margin-top: 2rem;
+}
+
+.file-list-container.hidden {
+    display: none;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.list-header h2 {
+    font-size: 1.25rem;
+}
+
+.global-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+select,
+button {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+select:focus,
+button:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+select option {
+    background: var(--bg-color);
+    /* Fallback for dropdown bg */
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.file-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.file-item {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: transform 0.2s;
+}
+
+.file-item:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.file-preview {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #000;
+}
+
+.file-details h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.file-details p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.file-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pending {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+
+.status-converting {
+    background: rgba(234, 179, 8, 0.2);
+    color: #facc15;
+}
+
+.status-done {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-color);
+}
+
+.status-error {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error-color);
+}
+
+.remove-btn {
+    padding: 0.25rem;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+}
+
+.remove-btn:hover {
+    color: var(--error-color);
+    background: transparent;
+}
+
+footer {
+    text-align: center;
+    margin-top: 3rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+/* Responsiveness */
+@media (max-width: 1024px) {
+    .app-container {
+        max-width: 95%;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        width: 92%;
+        margin: 1rem auto;
+        padding: 1.5rem;
+        /* Defaults from desktop apply (glass bg, border, radius) */
+        min-height: auto;
+        background: var(--glass-bg);
+        /* Explicitly ensure glass */
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        box-shadow: var(--glass-shadow);
+    }
+
+    header h1 {
+        font-size: clamp(2rem, 5vw, 2.5rem);
+    }
+
+    header {
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .drop-zone {
+        padding: 2rem 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+    }
+
+    .list-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .global-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .global-actions select,
+    .global-actions button {
+        width: 100%;
+        padding: 0.9rem;
+        /* Touch friendly */
+        font-size: 1rem;
+    }
+
+    .file-item {
+        flex-direction: column;
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 1.25rem;
+        gap: 1rem;
+        align-items: stretch;
+        position: relative;
+    }
+
+    .file-preview {
+        width: 60px;
+        height: 60px;
+    }
+
+    .file-info {
+        width: 100%;
+        margin-bottom: 0;
+    }
+
+    .file-details {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .file-details h4 {
+        font-size: 1.1rem;
+        margin-bottom: 0.25rem;
+        white-space: normal;
+        /* Allow wrap */
+        max-width: 100%;
+    }
+
+    .file-actions {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 0;
+    }
+
+    .file-actions select {
+        width: 100%;
+        padding: 0.9rem;
+        background: rgba(0, 0, 0, 0.2);
+        font-size: 1rem;
+    }
+
+    .file-actions button.btn-primary {
+        width: 100%;
+        padding: 0.9rem;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .remove-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .status-badge {
+        display: block;
+        text-align: center;
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+}

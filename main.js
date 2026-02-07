@@ -1,0 +1,253 @@
+import { convertFile } from './converter.js';
+import { saveAs } from 'file-saver';
+
+// DOM Elements
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const fileListContainer = document.getElementById('file-list-container');
+const fileList = document.getElementById('file-list');
+const globalFormatSelect = document.getElementById('global-format-select');
+const convertAllBtn = document.getElementById('convert-all-btn');
+const clearAllBtn = document.getElementById('clear-all-btn');
+
+// State
+let files = []; // Array of { id, file, targetFormat, status, resultBlob }
+
+// Event Listeners
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', handleDrop);
+fileInput.addEventListener('change', handleFileSelect);
+
+globalFormatSelect.addEventListener('change', updateAllFormats);
+convertAllBtn.addEventListener('click', convertAllFiles);
+clearAllBtn.addEventListener('click', clearAllFiles);
+
+// Handlers
+function handleDrop(e) {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    addFiles(droppedFiles);
+}
+
+function handleFileSelect(e) {
+    const selectedFiles = Array.from(e.target.files);
+    addFiles(selectedFiles);
+    fileInput.value = ''; // Reset input to allow same file selection again
+}
+
+function addFiles(newFiles) {
+    if (newFiles.length === 0) return;
+
+    const supportedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
+        'image/tiff', 'image/svg+xml', 'application/pdf' // PDF can be a source logically if we wanted, but requirments said Image Conversion. 
+        // Let's stick to what the user asked: "only image files". 
+        // But our converter supports PDF as *target*, source is usually images.
+        // Wait, requirements table: "Source Format: SVG... Target: PDF". 
+        // HEIC/HEIF don't always have standard mime types in all browsers, checks by extension often needed.
+    ];
+
+    const supportedExtensions = ['.heic', '.heif', '.tiff', '.tif'];
+
+    const validFiles = [];
+    let hasUnsupported = false;
+
+    newFiles.forEach(file => {
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        if (supportedTypes.includes(file.type) || supportedExtensions.includes(ext) || file.type.startsWith('image/')) {
+            validFiles.push(file);
+        } else {
+            hasUnsupported = true;
+        }
+    });
+
+    if (hasUnsupported) {
+        alert("Unsupported Format: Only image files are allowed.");
+    }
+
+    if (validFiles.length === 0) return;
+
+    validFiles.forEach(file => {
+        const id = Date.now() + Math.random().toString(36).substr(2, 9);
+        files.push({
+            id,
+            file,
+            targetFormat: globalFormatSelect.value || '', // Default to current global selection
+            status: 'pending',
+            resultBlob: null
+        });
+    });
+
+    renderFileList();
+    updateUIState();
+}
+
+function updateUIState() {
+    if (files.length > 0) {
+        fileListContainer.classList.remove('hidden');
+    } else {
+        fileListContainer.classList.add('hidden');
+    }
+
+    // Enable convert button if at least one file has a target format and is pending
+    const canConvert = files.some(f => f.status === 'pending' && f.targetFormat);
+    convertAllBtn.disabled = !canConvert;
+
+    // Update button text to reflect state
+    const convertingCount = files.filter(f => f.status === 'converting').length;
+    if (convertingCount > 0) {
+        convertAllBtn.textContent = `Converting (${convertingCount})...`;
+        convertAllBtn.disabled = true;
+    } else {
+        convertAllBtn.textContent = 'Convert All';
+    }
+}
+
+function renderFileList() {
+    fileList.innerHTML = '';
+    files.forEach(fileObj => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+
+        // Preview handling
+        let previewSrc = '';
+        if (fileObj.file.type.startsWith('image/')) {
+            previewSrc = URL.createObjectURL(fileObj.file);
+        } else {
+            // Placeholder for non-image or specialized formats like HEIC/TIFF before conversion
+            // We could try to generate a thumb for HEIC later, but for now use placeholder
+            previewSrc = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5NGEzYjgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTMgMmgyYTIgMiAwIDAgMSAybTJ2NGgyIi8+PHBvbHlsaW5lIHBvaW50cz0iMTcgOCAxMiAzIDcgOCIvPjxsaW5lIHgxPSIxMiIgeTE9IjMiIHgyPSIxMiIgeTI9IjE1Ii8+PC9zdmc+'; // Simple file icon
+        }
+
+        const fileSize = (fileObj.file.size / 1024).toFixed(1) + ' KB';
+
+        // Action area content depends on status
+        let actionContent = '';
+        if (fileObj.status === 'done') {
+            actionContent = `
+                <span class="status-badge status-done">Done</span>
+                <button class="btn-primary" onclick="downloadFile('${fileObj.id}')">Download</button>
+            `;
+        } else if (fileObj.status === 'error') {
+            actionContent = `
+                <span class="status-badge status-error">Error</span>
+            `;
+        } else if (fileObj.status === 'converting') {
+            actionContent = `
+                <span class="status-badge status-converting">Running...</span>
+            `;
+        } else {
+            actionContent = `
+                <select class="item-format-select" onchange="updateFileFormat('${fileObj.id}', this.value)">
+                    <option value="" disabled ${!fileObj.targetFormat ? 'selected' : ''}>Target...</option>
+                    <option value="image/jpeg" ${fileObj.targetFormat === 'image/jpeg' ? 'selected' : ''}>JPEG</option>
+                    <option value="image/png" ${fileObj.targetFormat === 'image/png' ? 'selected' : ''}>PNG</option>
+                    <option value="image/webp" ${fileObj.targetFormat === 'image/webp' ? 'selected' : ''}>WebP</option>
+                    <option value="image/bmp" ${fileObj.targetFormat === 'image/bmp' ? 'selected' : ''}>BMP</option>
+                    <option value="image/gif" ${fileObj.targetFormat === 'image/gif' ? 'selected' : ''}>GIF</option>
+                    <option value="application/pdf" ${fileObj.targetFormat === 'application/pdf' ? 'selected' : ''}>PDF</option>
+                </select>
+            `;
+        }
+
+        li.innerHTML = `
+            <div class="file-info">
+                <img src="${previewSrc}" alt="preview" class="file-preview">
+                <div class="file-details">
+                    <h4>${fileObj.file.name}</h4>
+                    <p>${fileSize} • ${fileObj.file.type || 'Unknown'}</p>
+                </div>
+            </div>
+            <div class="file-actions">
+                ${actionContent}
+                <button class="remove-btn" onclick="removeFile('${fileObj.id}')" title="Remove">✕</button>
+            </div>
+        `;
+        fileList.appendChild(li);
+    });
+
+    // Re-attach global functions to window for inline onclicks (module scope block)
+    window.removeFile = removeFile;
+    window.updateFileFormat = updateFileFormat;
+    window.downloadFile = downloadFile;
+}
+
+function removeFile(id) {
+    files = files.filter(f => f.id !== id);
+    renderFileList();
+    updateUIState();
+}
+
+function updateFileFormat(id, format) {
+    const file = files.find(f => f.id === id);
+    if (file) {
+        file.targetFormat = format;
+        updateUIState();
+    }
+}
+
+function updateAllFormats() {
+    const format = globalFormatSelect.value;
+    files.forEach(f => {
+        if (f.status === 'pending') {
+            f.targetFormat = format;
+        }
+    });
+    renderFileList();
+    updateUIState();
+}
+
+function clearAllFiles() {
+    files = [];
+    renderFileList();
+    updateUIState();
+}
+
+async function convertAllFiles() {
+    // Only convert pending files that have a target format
+    const jobs = files.filter(f => f.status === 'pending' && f.targetFormat);
+    if (jobs.length === 0) return;
+
+    jobs.forEach(f => f.status = 'converting');
+    renderFileList();
+    updateUIState();
+
+    // Process parallel or sequential? Parallel is fine for JS
+    await Promise.all(jobs.map(async (fileObj) => {
+        try {
+            const blob = await convertFile(fileObj.file, fileObj.targetFormat);
+            fileObj.resultBlob = blob;
+            fileObj.status = 'done';
+        } catch (error) {
+            console.error(error);
+            fileObj.status = 'error';
+        }
+    }));
+
+    renderFileList();
+    updateUIState();
+}
+
+function downloadFile(id) {
+    const fileObj = files.find(f => f.id === id);
+    if (fileObj && fileObj.resultBlob) {
+        // Determine extension
+        const extMap = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'image/bmp': 'bmp',
+            'image/gif': 'gif',
+            'application/pdf': 'pdf'
+        };
+        const ext = extMap[fileObj.targetFormat] || 'bin';
+        const originalName = fileObj.file.name.replace(/\.[^/.]+$/, "");
+        saveAs(fileObj.resultBlob, `${originalName}_converted.${ext}`);
+    }
+}
